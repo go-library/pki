@@ -4,7 +4,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"git.clpi.net/UCCI/pki"
+	"github.com/go-library/pki"
 	"log"
 	"os"
 	"time"
