@@ -5,10 +5,20 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"github.com/go-library/pki"
+	be "github.com/go-library/pki/backends/text"
+	"github.com/go-library/xflag"
 	"log"
 	"os"
 	"time"
 )
+
+var (
+	fs = xflag.FlagSet{Name: "main", EnableCompletion: true}
+)
+
+func init() {
+	log.SetFlags(log.Lshortfile)
+}
 
 func MakeCAKeyPair() (cakey interface{}, cacert *x509.Certificate, err error) {
 	var ()
@@ -88,15 +98,12 @@ func main() {
 		}
 	}()
 
-	if _, err = os.Stat("pki.db"); os.IsNotExist(err) {
+	backend = be.Open("pkidb")
+
+	if _, err = os.Stat("pkidb"); os.IsNotExist(err) {
 		isExist = false
 	} else {
 		isExist = true
-	}
-
-	backend, err = pki.NewBoltBackend("pki.db")
-	if err != nil {
-		return
 	}
 
 	if isExist {
@@ -129,19 +136,21 @@ func main() {
 		fmt.Println(string(pem))
 	}
 
-	err = cm.VisitAll(func(cert *x509.Certificate) error {
-		now := time.Now()
-		if now.Before(cert.NotBefore) {
-			fmt.Println("inactivated")
-		}
+	/*
+		err = cm.VisitAll(func(cert *x509.Certificate) error {
+			now := time.Now()
+			if now.Before(cert.NotBefore) {
+				fmt.Println("inactivated")
+			}
 
-		if now.After(cert.NotAfter) {
-			fmt.Println("expired")
-		}
+			if now.After(cert.NotAfter) {
+				fmt.Println("expired")
+			}
 
-		fmt.Printf("%s %s %s %s\n", cert.SerialNumber, cert.NotBefore.Format("2006-01-02"), cert.NotAfter.Format("2006-01-02"), cert.Subject.CommonName)
-		return nil
-	})
+			fmt.Printf("%s %s %s %s\n", cert.SerialNumber, cert.NotBefore.Format("2006-01-02"), cert.NotAfter.Format("2006-01-02"), cert.Subject.CommonName)
+			return nil
+		})
+	*/
 	if err != nil {
 		return
 	}

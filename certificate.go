@@ -122,12 +122,3 @@ func (cm *CertManager) Sign(template *x509.Certificate) (cert *x509.Certificate,
 
 	return cert, nil
 }
-
-func (cm *CertManager) VisitAll(fn func(cert *x509.Certificate) (err error)) (err error) {
-	err = cm.backend.VisitAll(fn)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}

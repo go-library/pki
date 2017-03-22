@@ -1,6 +1,8 @@
 package pki
 
 import (
+	backend "github.com/go-library/pki/backends/text"
+
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"os"
@@ -17,8 +19,6 @@ func TestCertManager(t *testing.T) {
 
 		key  interface{}
 		cert *x509.Certificate
-
-		backend Backend
 	)
 
 	// create cakey
@@ -47,8 +47,7 @@ func TestCertManager(t *testing.T) {
 
 	// set CA key-pair for cert-manager
 	// create net cert-manager
-	backend, err = NewBoltBackend("pkitest.db")
-	cm, err = CreateCertManager(backend, cakey, cacert, true)
+	cm, err = CreateCertManager(backend.Open("pkitest"), cakey, cacert, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,10 +85,12 @@ func TestCertManager(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cm.VisitAll(func(cert *x509.Certificate) error {
-		t.Log("cert:", cert.SerialNumber)
-		return nil
-	})
+	/*
+		err = cm.VisitAll(func(cert *x509.Certificate) error {
+			t.Log("cert:", cert.SerialNumber)
+			return nil
+		})
+	*/
 	if err != nil {
 		t.Fatal(err)
 	}
