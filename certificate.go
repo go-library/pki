@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"log"
+	"math/big"
 )
 
 type CertManager struct {
@@ -124,6 +125,11 @@ func (cm *CertManager) Sign(template *x509.Certificate) (cert *x509.Certificate,
 	return cert, nil
 }
 
+func (cm *CertManager) GetCert(serial *big.Int) (cert *x509.Certificate, err error) {
+	cert, err = cm.backend.GetCert(serial)
+	return
+}
+
 func (cm *CertManager) GetCerts() (certs chan *x509.Certificate, err error) {
 	certs = make(chan *x509.Certificate)
 
@@ -138,9 +144,9 @@ func (cm *CertManager) GetCerts() (certs chan *x509.Certificate, err error) {
 			cert, err := cm.backend.GetCert(serial)
 			if err != nil {
 				log.Println(err)
-				return
+			} else {
+				certs <- cert
 			}
-			certs <- cert
 		}
 	}()
 

@@ -15,8 +15,9 @@ type Backend interface {
 
 	DelCert(serialNumber *big.Int) (err error)
 	GetCert(serialNumber *big.Int) (cert *x509.Certificate, err error)
-	RevoketCert(serialNumber *big.Int) (cert *x509.Certificate, err error)
-	RecoverCert(serialNumber *big.Int) (cert *x509.Certificate, err error)
+
+	RevoketCert(serialNumber *big.Int) (err error)
+	RecoverCert(serialNumber *big.Int) (err error)
 
 	GetSerialNumbers() (serialNumbers chan *big.Int, err error)
 }

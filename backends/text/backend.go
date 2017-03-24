@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"os"
 	"path"
@@ -170,25 +169,25 @@ func (b *TextBackend) GetCert(serialNumber *big.Int) (cert *x509.Certificate, er
 	return
 }
 
-func (b *TextBackend) RevoketCert(serialNumber *big.Int) (cert *x509.Certificate, err error) {
+func (b *TextBackend) RevoketCert(serialNumber *big.Int) (err error) {
 	err = fmt.Errorf("RevoketCert unimplemented")
 	return
 }
 
-func (b *TextBackend) RecoverCert(serialNumber *big.Int) (cert *x509.Certificate, err error) {
+func (b *TextBackend) RecoverCert(serialNumber *big.Int) (err error) {
 	err = fmt.Errorf("RecoverCert unimplemented")
 	return
 }
 
 func (b *TextBackend) GetSerialNumbers() (serialNumbers chan *big.Int, err error) {
 	serialNumbers = make(chan *big.Int)
+	matches, err := filepath.Glob(path.Join(b.BaseDir, FILE_CERTDIR, "*.pem"))
+	if err != nil {
+		return
+	}
+
 	go func() {
 		defer close(serialNumbers)
-		matches, err := filepath.Glob(path.Join(b.BaseDir, FILE_CERTDIR, "*.pem"))
-		if err != nil {
-			log.Println(err)
-			return
-		}
 		for i := range matches {
 			sn := &big.Int{}
 			serialText := strings.TrimSuffix(path.Base(matches[i]), ".pem")
