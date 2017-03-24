@@ -136,23 +136,26 @@ func main() {
 		fmt.Println(string(pem))
 	}
 
-	/*
-		err = cm.VisitAll(func(cert *x509.Certificate) error {
-			now := time.Now()
-			if now.Before(cert.NotBefore) {
-				fmt.Println("inactivated")
-			}
-
-			if now.After(cert.NotAfter) {
-				fmt.Println("expired")
-			}
-
-			fmt.Printf("%s %s %s %s\n", cert.SerialNumber, cert.NotBefore.Format("2006-01-02"), cert.NotAfter.Format("2006-01-02"), cert.Subject.CommonName)
-			return nil
-		})
-	*/
+	certs, err := cm.GetCerts()
 	if err != nil {
-		return
+
+	}
+
+	for cert := range certs {
+		now := time.Now()
+		if now.Before(cert.NotBefore) {
+			fmt.Println("inactivated")
+		}
+
+		if now.After(cert.NotAfter) {
+			fmt.Println("expired")
+		}
+
+		fmt.Printf("%x %s %s %s\n",
+			cert.SerialNumber,
+			cert.NotBefore.Format("2006-01-02"),
+			cert.NotAfter.Format("2006-01-02"),
+			cert.Subject.CommonName)
 	}
 
 	return

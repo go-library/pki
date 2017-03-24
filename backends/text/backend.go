@@ -5,12 +5,14 @@ import (
 
 	"crypto/rand"
 	"crypto/x509"
-	"io/ioutil"
-	//"log"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"math/big"
 	"os"
 	"path"
+	"path/filepath"
+	"strings"
 )
 
 const (
@@ -136,12 +138,9 @@ func (b *TextBackend) AddCert(cert *x509.Certificate) (err error) {
 		return
 	}
 
-	snText, err := cert.SerialNumber.MarshalText()
-	if err != nil {
-		return
-	}
+	snText := fmt.Sprintf("%x", cert.SerialNumber)
 
-	err = b.writeFile(path.Join(FILE_CERTDIR, string(snText)), certPEM, 0644)
+	err = b.writeFile(path.Join(FILE_CERTDIR, string(snText)+".pem"), certPEM, 0644)
 	if err != nil {
 		return
 	}
@@ -155,7 +154,19 @@ func (b *TextBackend) DelCert(serialNumber *big.Int) (err error) {
 }
 
 func (b *TextBackend) GetCert(serialNumber *big.Int) (cert *x509.Certificate, err error) {
-	err = fmt.Errorf("GetCert unimplemented")
+	filename := fmt.Sprintf("%x.pem", serialNumber)
+	certPEM, err := b.readFile(path.Join(FILE_CERTDIR, filename))
+	if err != nil {
+		return
+	}
+
+	key, err := pki.DecodePEM(certPEM)
+	if err != nil {
+		return
+	}
+
+	cert = key.(*x509.Certificate)
+
 	return
 }
 
@@ -170,6 +181,20 @@ func (b *TextBackend) RecoverCert(serialNumber *big.Int) (cert *x509.Certificate
 }
 
 func (b *TextBackend) GetSerialNumbers() (serialNumbers chan *big.Int, err error) {
-	err = fmt.Errorf("GetSerialNumbers unimplemented")
+	serialNumbers = make(chan *big.Int)
+	go func() {
+		defer close(serialNumbers)
+		matches, err := filepath.Glob(path.Join(b.BaseDir, FILE_CERTDIR, "*.pem"))
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		for i := range matches {
+			sn := &big.Int{}
+			serialText := strings.TrimSuffix(path.Base(matches[i]), ".pem")
+			fmt.Sscanf(serialText, "%x", sn)
+			serialNumbers <- sn
+		}
+	}()
 	return
 }
