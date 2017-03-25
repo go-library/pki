@@ -21,7 +21,6 @@ func init() {
 }
 
 func MakeCAKeyPair() (cakey interface{}, cacert *x509.Certificate, err error) {
-	var ()
 	cakey, err = pki.CreatePrivateKey(pki.RSA_2048)
 	if err != nil {
 		return nil, nil, err
@@ -41,7 +40,7 @@ func MakeCAKeyPair() (cakey interface{}, cacert *x509.Certificate, err error) {
 	cacert.KeyUsage |= x509.KeyUsageCertSign
 	cacert.SubjectKeyId, err = pki.CreateHashSubjectKeyId(cacert.PublicKey)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	return cakey, cacert, nil
@@ -54,7 +53,7 @@ func CreateCertificate(cm *pki.CertManager, cname string) (cert *x509.Certificat
 	// create a key
 	key, err = pki.CreatePrivateKey(pki.RSA_1024)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	// setting a cert data
@@ -92,24 +91,19 @@ func main() {
 		isExist bool
 	)
 
-	defer func() {
-		if err != nil {
-			log.Println(err)
-		}
-	}()
-
-	backend = be.Open("pkidb")
-
-	if _, err = os.Stat("pkidb"); os.IsNotExist(err) {
+	if _, err = os.Stat("CA"); os.IsNotExist(err) {
 		isExist = false
 	} else {
 		isExist = true
 	}
 
+	backend = be.Open("CA")
+
 	if isExist {
 		// open
 		cm, err = pki.OpenCertManager(backend)
 		if err != nil {
+			log.Fatal(err)
 		}
 	} else {
 		// create
@@ -120,14 +114,12 @@ func main() {
 
 		cakey, cacert, err = MakeCAKeyPair()
 		if err != nil {
-			os.Remove("pki.db")
-			return
+			log.Fatal(err)
 		}
 
 		cm, err = pki.CreateCertManager(backend, cakey, cacert, true)
 		if err != nil {
-			os.Remove("pki.db")
-			return
+			log.Fatal(err)
 		}
 	}
 
@@ -136,12 +128,7 @@ func main() {
 		fmt.Println(string(pem))
 	}
 
-	certs, err := cm.GetCerts()
-	if err != nil {
-
-	}
-
-	for cert := range certs {
+	err = cm.Certificates(func(cert *x509.Certificate, revoked bool) (err error) {
 		now := time.Now()
 		if now.Before(cert.NotBefore) {
 			fmt.Println("inactivated")
@@ -156,6 +143,11 @@ func main() {
 			cert.NotBefore.Format("2006-01-02"),
 			cert.NotAfter.Format("2006-01-02"),
 			cert.Subject.CommonName)
+
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	return

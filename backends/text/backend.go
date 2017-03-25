@@ -131,7 +131,7 @@ func (b *TextBackend) GetCAKeyPair() (cakey interface{}, cacert *x509.Certificat
 	return
 }
 
-func (b *TextBackend) AddCert(cert *x509.Certificate) (err error) {
+func (b *TextBackend) AddCertificate(cert *x509.Certificate) (err error) {
 	certPEM, err := pki.EncodePEM(cert)
 	if err != nil {
 		return
@@ -147,12 +147,12 @@ func (b *TextBackend) AddCert(cert *x509.Certificate) (err error) {
 	return
 }
 
-func (b *TextBackend) DelCert(serialNumber *big.Int) (err error) {
+func (b *TextBackend) DeleteCertificate(serialNumber *big.Int) (err error) {
 	err = fmt.Errorf("DelCert unimplemented")
 	return
 }
 
-func (b *TextBackend) GetCert(serialNumber *big.Int) (cert *x509.Certificate, err error) {
+func (b *TextBackend) Certificate(serialNumber *big.Int) (cert *x509.Certificate, revoked bool, err error) {
 	filename := fmt.Sprintf("%x.pem", serialNumber)
 	certPEM, err := b.readFile(path.Join(FILE_CERTDIR, filename))
 	if err != nil {
@@ -165,35 +165,38 @@ func (b *TextBackend) GetCert(serialNumber *big.Int) (cert *x509.Certificate, er
 	}
 
 	cert = key.(*x509.Certificate)
-
+	revoked = false
 	return
 }
 
-func (b *TextBackend) RevoketCert(serialNumber *big.Int) (err error) {
-	err = fmt.Errorf("RevoketCert unimplemented")
+func (b *TextBackend) RevokeCertificate(serialNumber *big.Int) (err error) {
+	err = fmt.Errorf("RevokeCert unimplemented")
 	return
 }
 
-func (b *TextBackend) RecoverCert(serialNumber *big.Int) (err error) {
+func (b *TextBackend) RecoverCertificate(serialNumber *big.Int) (err error) {
 	err = fmt.Errorf("RecoverCert unimplemented")
 	return
 }
 
-func (b *TextBackend) GetSerialNumbers() (serialNumbers chan *big.Int, err error) {
-	serialNumbers = make(chan *big.Int)
+func (b *TextBackend) Certificates(fn func(cert *x509.Certificate, revoked bool) (err error)) (err error) {
 	matches, err := filepath.Glob(path.Join(b.BaseDir, FILE_CERTDIR, "*.pem"))
 	if err != nil {
 		return
 	}
 
-	go func() {
-		defer close(serialNumbers)
-		for i := range matches {
-			sn := &big.Int{}
-			serialText := strings.TrimSuffix(path.Base(matches[i]), ".pem")
-			fmt.Sscanf(serialText, "%x", sn)
-			serialNumbers <- sn
+	for i := range matches {
+		sn := &big.Int{}
+		serialText := strings.TrimSuffix(path.Base(matches[i]), ".pem")
+		fmt.Sscanf(serialText, "%x", sn)
+		cert, revoked, err := b.Certificate(sn)
+		if err != nil {
+			return err
 		}
-	}()
+		err = fn(cert, revoked)
+		if err != nil {
+			return err
+		}
+	}
 	return
 }
