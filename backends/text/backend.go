@@ -5,6 +5,7 @@ import (
 
 	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -16,6 +17,7 @@ import (
 
 const (
 	FILE_NEXT_SERIAL = "next-serial.txt"
+	FILE_DATABASE    = "index.txt"
 	FILE_CAKEY       = "cakey.pem"
 	FILE_CACERT      = "cacert.pem"
 	FILE_CERTDIR     = "certs"
@@ -48,18 +50,11 @@ func (b *TextBackend) writeFile(filename string, stream []byte, mode os.FileMode
 	return
 }
 
-func (b *TextBackend) LookupCert(sn *big.Int) (matche string, err error) {
-	matches, err := filepath.Glob(path.Join(b.BaseDir, FILE_CERTDIR, fmt.Sprintf("%x*", sn)))
-	if len(matches) == 0 {
-		err = fmt.Errorf("no matched certificate with %x", sn)
-		return
-	} else if len(matches) > 1 {
-		err = fmt.Errorf("too many matched certificate with %x", sn)
-		return
-	}
+/*
+func (b *TextBackend) updateDatabase(serialNumber *big.Int, state string) (err error) {
 
-	return matches[0], nil
 }
+*/
 
 func (b *TextBackend) GetNextSerialNumber() (serialNumber *big.Int, err error) {
 	t, err := b.readFile(path.Join(b.BaseDir, FILE_NEXT_SERIAL))
@@ -160,11 +155,9 @@ func (b *TextBackend) DeleteCertificate(serialNumber *big.Int) (err error) {
 	return
 }
 
-func (b *TextBackend) Certificate(serialNumber *big.Int) (cert *x509.Certificate, revoked bool, err error) {
-	filename, err := b.LookupCert(serialNumber)
-	if err != nil {
-		return
-	}
+func (b *TextBackend) Certificate(serialNumber *big.Int) (cert *x509.Certificate, revoked *pkix.RevokedCertificate, err error) {
+	filename := path.Join(b.BaseDir, FILE_CERTDIR, fmt.Sprintf("%x.pem", serialNumber))
+	revoked = nil
 
 	certPEM, err := b.readFile(filename)
 	if err != nil {
@@ -177,21 +170,18 @@ func (b *TextBackend) Certificate(serialNumber *big.Int) (cert *x509.Certificate
 	}
 
 	cert = key.(*x509.Certificate)
-	revoked = false
 	return
 }
 
 func (b *TextBackend) RevokeCertificate(serialNumber *big.Int) (err error) {
-	err = fmt.Errorf("RevokeCert unimplemented")
 	return
 }
 
 func (b *TextBackend) RecoverCertificate(serialNumber *big.Int) (err error) {
-	err = fmt.Errorf("RecoverCert unimplemented")
 	return
 }
 
-func (b *TextBackend) Certificates(fn func(cert *x509.Certificate, revoked bool) (err error)) (err error) {
+func (b *TextBackend) Certificates(fn func(cert *x509.Certificate, revoked *pkix.RevokedCertificate) (err error)) (err error) {
 	matches, err := filepath.Glob(path.Join(b.BaseDir, FILE_CERTDIR, "*.pem"))
 	if err != nil {
 		return

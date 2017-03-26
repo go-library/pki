@@ -3,8 +3,10 @@ package pki
 import (
 	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"fmt"
 	"math/big"
+	"time"
 )
 
 type CertManager struct {
@@ -124,14 +126,66 @@ func (cm *CertManager) Sign(template *x509.Certificate) (cert *x509.Certificate,
 	return cert, nil
 }
 
-func (cm *CertManager) Certificate(serial *big.Int) (cert *x509.Certificate, revoked bool, err error) {
+func (cm *CertManager) Certificate(serial *big.Int) (cert *x509.Certificate, revoked *pkix.RevokedCertificate, err error) {
 	cert, revoked, err = cm.backend.Certificate(serial)
 	return
 }
 
-func (cm *CertManager) Certificates(fn func(cert *x509.Certificate, revoked bool) (err error)) (err error) {
-	err = cm.backend.Certificates(func(cert *x509.Certificate, revoked bool) (err error) {
+func (cm *CertManager) Certificates(fn func(cert *x509.Certificate, revoked *pkix.RevokedCertificate) (err error)) (err error) {
+	err = cm.backend.Certificates(func(cert *x509.Certificate, revoked *pkix.RevokedCertificate) (err error) {
 		return fn(cert, revoked)
 	})
+	return
+}
+
+func (cm *CertManager) RevokeCertificate(serial *big.Int) (err error) {
+	err = cm.backend.RevokeCertificate(serial)
+	return
+}
+
+func (cm *CertManager) RecoverCertificate(serial *big.Int) (err error) {
+	err = cm.backend.RecoverCertificate(serial)
+	return
+}
+
+func (cm *CertManager) DeleteCertificate(serial *big.Int) (err error) {
+	err = cm.backend.DeleteCertificate(serial)
+	return
+}
+
+func (cm *CertManager) CreateCRL() (crlBytes []byte, err error) {
+	cakey, cacert, err := cm.backend.GetCAKeyPair()
+	if err != nil {
+		return
+	}
+
+	var (
+		revokedCerts []pkix.RevokedCertificate
+		now          = time.Now()
+		expiry       = now.Add(time.Hour * 24 * 30)
+	)
+
+	err = cm.Certificates(func(cert *x509.Certificate, revoked *pkix.RevokedCertificate) (err error) {
+		if revoked == nil {
+			return
+		}
+		/*
+			pkix.RevokedCertificate{
+				SerialNumber
+				RevocationTime
+				Extensions
+			}
+		*/
+		return
+	})
+	if err != nil {
+		return
+	}
+
+	crlBytes, err = cacert.CreateCRL(rand.Reader, cakey, revokedCerts, now, expiry)
+	if err != nil {
+		return
+	}
+
 	return
 }

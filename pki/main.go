@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
 	"time"
 )
@@ -106,6 +107,8 @@ COMMANDS:
 
   recover SERIAL-NUMBER
 
+	delete SERIAL-NUMBER
+
   list
 
   cacert
@@ -156,7 +159,7 @@ COPTIONS:
 	case "list":
 		now := time.Now()
 
-		err = cm.Certificates(func(cert *x509.Certificate, revoked bool) (err error) {
+		err = cm.Certificates(func(cert *x509.Certificate, revoked *pkix.RevokedCertificate) (err error) {
 			if now.Before(cert.NotBefore) {
 				fmt.Println("inactivated")
 			}
@@ -165,7 +168,13 @@ COPTIONS:
 				fmt.Println("expired")
 			}
 
-			fmt.Printf("%x %s %s %s\n",
+			state := "V"
+			if revoked != nil {
+				state = "R"
+			}
+
+			fmt.Printf("%s %x %s %s %s\n",
+				state,
 				cert.SerialNumber,
 				cert.NotBefore.Format("2006-01-02"),
 				cert.NotAfter.Format("2006-01-02"),
@@ -181,6 +190,30 @@ COPTIONS:
 		cert, err = CreateCertificate(cm, "localhost.localdomain")
 		if pem, err := pki.EncodePEM(cert); err == nil {
 			fmt.Println(string(pem))
+		}
+
+	case "revoke":
+		sn := &big.Int{}
+		fmt.Sscanf(args[1], "%x", sn)
+		err = cm.RevokeCertificate(sn)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	case "recover":
+		sn := &big.Int{}
+		fmt.Sscanf(args[1], "%x", sn)
+		err = cm.RecoverCertificate(sn)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	case "delete":
+		sn := &big.Int{}
+		fmt.Sscanf(args[1], "%x", sn)
+		err = cm.DeleteCertificate(sn)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 	default:
